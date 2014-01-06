@@ -6,9 +6,12 @@ a cross-platform client/server for communicating with processes less-than-synchr
 """
 from setuptools import setup
 
+# this sets __version__
+exec(open('hey/version.py'))
+
 setup(
     name='hey',
-    version='0.1-dev',
+    version=__version__,
     url='http://github.com/wilsaj/hey/',
     license='BSD',
     author='Andy Wilson',
@@ -18,7 +21,13 @@ setup(
     packages=['hey'],
     platforms='any',
     install_requires=[
+        'docopt>=0.6.1',
     ],
+    entry_points={
+        'console_scripts': [
+            'hey = hey.cli:main',
+        ],
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Topic :: System :: Operating System',
