@@ -8,20 +8,23 @@ except ImportError:
     from queue import Queue, Empty
 
 
-# yeah, globals are bad and all that
-server = None
+class HeyQueueFactory(protocol.Factory, object):
+    def __init__(self, outQueue, *args, **kwargs):
+        self.outQueue = outQueue
+        super(HeyQueueFactory, self).__init__(*args, **kwargs)
 
-
-class HeyQueueFactory(protocol.Factory):
     def buildProtocol(self, addr):
-        return HeyQueueProtocol()
+        return HeyQueueProtocol(self.outQueue)
 
 
-class HeyQueueProtocol(protocol.Protocol):
+class HeyQueueProtocol(protocol.Protocol, object):
+    def __init__(self, outQueue, *args, **kwargs):
+        self.outQueue = outQueue
+        super(HeyQueueProtocol, self).__init__(*args, **kwargs)
+
     def dataReceived(self, data):
-        global outQueue
         try:
-            output = outQueue.get_nowait()
+            output = self.outQueue.get_nowait()
         except Empty:
             output = "nothing to report, sir"
 
@@ -29,15 +32,13 @@ class HeyQueueProtocol(protocol.Protocol):
 
 
 class HeyProcessProtocol(protocol.ProcessProtocol, object):
-    def __init__(self, *args, **kwargs):
-        global outQueue
-        outQueue = Queue()
+    def __init__(self, outQueue, *args, **kwargs):
+        self.outQueue = outQueue
         self.status = 'open'
         super(HeyProcessProtocol, self).__init__(*args, **kwargs)
 
     def outReceived(self, data):
-        global outQueue
-        outQueue.put(data)
+        self.outQueue.put(data)
 
     def processExited(self, reason):
         self.status = 'closed'
@@ -49,17 +50,17 @@ class HeyProcessProtocol(protocol.ProcessProtocol, object):
 
 class HeyServer(object):
     def __init__(self, command, port):
-        self.proc = HeyProcessProtocol()
+        outQueue = Queue()
+        self.proc = HeyProcessProtocol(outQueue)
         reactor.spawnProcess(self.proc, command[0], command, usePTY=True)
         endpoint = TCP4ServerEndpoint(reactor, port)
-        endpoint.listen(HeyQueueFactory())
+        endpoint.listen(HeyQueueFactory(outQueue))
 
     def run(self):
         reactor.run()
 
 
 def start(command):
-    global server
     host, port = "localhost", 9999
 
     server = HeyServer(command, port)
