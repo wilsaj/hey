@@ -45,7 +45,6 @@ class HeyProcessProtocol(protocol.ProcessProtocol, object):
 
     def processEnded(self, reason):
         self.status = 'closed'
-        reactor.stop()
 
 
 class HeyServer(object):
