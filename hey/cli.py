@@ -3,6 +3,7 @@
 Usage:
   hey listen <command>
   hey whatsgoingon
+  hey stopit
   hey (-h | --help)
   hey --version
 
@@ -26,8 +27,10 @@ def main():
         server.start(command)
 
     if arguments.get('whatsgoingon'):
-        client.whatsup('ping')
+        client.whatsup()
 
+    if arguments.get('stopit'):
+        client.stopit()
 
 if __name__ == '__main__':
     main()

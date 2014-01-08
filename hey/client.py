@@ -1,7 +1,15 @@
 import socket
 
 
-def whatsup(message):
+def stopit():
+    _send_message('stopit')
+
+
+def whatsup():
+    _send_message('whatsup')
+
+
+def _send_message(message):
     HOST, PORT = "localhost", 9999
 
     # Create a socket (SOCK_STREAM means a TCP socket)
@@ -10,7 +18,7 @@ def whatsup(message):
     try:
         # Connect to server and send data
         sock.connect((HOST, PORT))
-        sock.sendall(message + "\n")
+        sock.sendall(message)
 
         # Receive data from the server and shut down
         received = sock.recv(1024)
@@ -19,3 +27,5 @@ def whatsup(message):
 
     print "Sent:     {}".format(message)
     print "Received: {}".format(received)
+
+    return received

@@ -23,6 +23,16 @@ class HeyQueueProtocol(protocol.Protocol, object):
         super(HeyQueueProtocol, self).__init__(*args, **kwargs)
 
     def dataReceived(self, data):
+        if data == 'whatsup':
+            self.whatsup()
+        if data == 'stopit':
+            self.stopit()
+
+    def stopit(self):
+        self.transport.write('stopping server')
+        reactor.callLater(1, reactor.stop)
+
+    def whatsup(self):
         try:
             output = self.outQueue.get_nowait()
         except Empty:
