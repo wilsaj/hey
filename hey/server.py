@@ -33,10 +33,14 @@ class HeyQueueProtocol(protocol.Protocol, object):
         reactor.callLater(1, reactor.stop)
 
     def whatsup(self):
-        try:
-            output = self.outQueue.get_nowait()
-        except Empty:
-            output = "nothing to report, sir"
+        output = ""
+        while True:
+            try:
+                output += self.outQueue.get_nowait()
+            except Empty:
+                if output == "":
+                    output = "nothing to report, sir"
+                break
 
         self.transport.write(output)
 
