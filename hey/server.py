@@ -8,19 +8,25 @@ except ImportError:
     from queue import Queue, Empty
 
 
-class HeyQueueFactory(protocol.Factory, object):
-    def __init__(self, outQueue, *args, **kwargs):
-        self.outQueue = outQueue
-        super(HeyQueueFactory, self).__init__(*args, **kwargs)
+class ProcessInfo(object):
+    """Holds state of a process (including output and status)."""
+    outQueue = Queue()
+    status = None
+
+
+class HeyResponderFactory(protocol.Factory, object):
+    def __init__(self, process_info, *args, **kwargs):
+        self.process_info = process_info
+        super(HeyResponderFactory, self).__init__(*args, **kwargs)
 
     def buildProtocol(self, addr):
-        return HeyQueueProtocol(self.outQueue)
+        return HeyResponderProtocol(self.process_info)
 
 
-class HeyQueueProtocol(protocol.Protocol, object):
-    def __init__(self, outQueue, *args, **kwargs):
-        self.outQueue = outQueue
-        super(HeyQueueProtocol, self).__init__(*args, **kwargs)
+class HeyResponderProtocol(protocol.Protocol, object):
+    def __init__(self, process_info, *args, **kwargs):
+        self.process_info = process_info
+        super(HeyResponderProtocol, self).__init__(*args, **kwargs)
 
     def dataReceived(self, data):
         if data == 'whatsup':
@@ -36,38 +42,40 @@ class HeyQueueProtocol(protocol.Protocol, object):
         output = ""
         while True:
             try:
-                output += self.outQueue.get_nowait()
+                output += self.process_info.outQueue.get_nowait()
             except Empty:
                 if output == "":
                     output = "nothing to report, sir\n"
                 break
 
         self.transport.write(output)
+        if self.process_info.status == 'closed':
+            reactor.callLater(1, reactor.stop)
 
 
 class HeyProcessProtocol(protocol.ProcessProtocol, object):
-    def __init__(self, outQueue, *args, **kwargs):
-        self.outQueue = outQueue
-        self.status = 'open'
+    def __init__(self, process_info, *args, **kwargs):
+        self.process_info = process_info
+        self.process_info.status = 'open'
         super(HeyProcessProtocol, self).__init__(*args, **kwargs)
 
     def outReceived(self, data):
-        self.outQueue.put(data)
+        self.process_info.outQueue.put(data)
 
     def processExited(self, reason):
-        self.status = 'closed'
+        self.process_info.status = 'closed'
 
     def processEnded(self, reason):
-        self.status = 'closed'
+        self.process_info.status = 'closed'
 
 
 class HeyServer(object):
     def __init__(self, command, port):
-        outQueue = Queue()
-        self.proc = HeyProcessProtocol(outQueue)
+        process_info = ProcessInfo()
+        self.proc = HeyProcessProtocol(process_info)
         reactor.spawnProcess(self.proc, command[0], command, usePTY=True)
         endpoint = TCP4ServerEndpoint(reactor, port)
-        endpoint.listen(HeyQueueFactory(outQueue))
+        endpoint.listen(HeyResponderFactory(process_info))
 
     def run(self):
         reactor.run()
