@@ -34,9 +34,13 @@ class HeyResponderProtocol(protocol.Protocol, object):
         if data == 'stopit':
             self.stopit()
 
+    def connectionLost(self, reason):
+        if self.process_info.status in ['exited', 'ended', 'stopping']:
+            reactor.stop()
+
     def stopit(self):
-        self.transport.write('stopping server')
-        reactor.callLater(1, reactor.stop)
+        self.transport.write('stopping server\n')
+        self.process_info.status = 'stopping'
 
     def whatsup(self):
         output = ""
@@ -49,24 +53,24 @@ class HeyResponderProtocol(protocol.Protocol, object):
                 break
 
         self.transport.write(output)
-        if self.process_info.status == 'closed':
-            reactor.callLater(1, reactor.stop)
 
 
 class HeyProcessProtocol(protocol.ProcessProtocol, object):
     def __init__(self, process_info, *args, **kwargs):
         self.process_info = process_info
-        self.process_info.status = 'open'
         super(HeyProcessProtocol, self).__init__(*args, **kwargs)
+
+    def connectionMade(self):
+        self.process_info.status = 'running'
 
     def outReceived(self, data):
         self.process_info.outQueue.put(data)
 
     def processExited(self, reason):
-        self.process_info.status = 'closed'
+        self.process_info.status = 'exited'
 
     def processEnded(self, reason):
-        self.process_info.status = 'closed'
+        self.process_info.status = 'ended'
 
 
 class HeyServer(object):
