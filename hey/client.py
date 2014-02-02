@@ -4,14 +4,19 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.endpoints import TCP4ClientEndpoint
 
+debug = False
+
 
 class HeyProtocol(Protocol):
     def sendMessage(self, message):
         self.transport.write(message)
-        stdout.write("Sent:     {}\n".format(message))
+        if debug:
+            stdout.write("Sent:     {}\n".format(message))
 
     def dataReceived(self, data):
-        stdout.write("Received: {}\n".format(data))
+        if debug:
+            stdout.write("Received: \n")
+        stdout.write(str(data))
         self.transport.loseConnection()
         reactor.stop()
 

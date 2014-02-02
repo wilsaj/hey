@@ -39,7 +39,7 @@ class HeyQueueProtocol(protocol.Protocol, object):
                 output += self.outQueue.get_nowait()
             except Empty:
                 if output == "":
-                    output = "nothing to report, sir"
+                    output = "nothing to report, sir\n"
                 break
 
         self.transport.write(output)
