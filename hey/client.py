@@ -1,4 +1,24 @@
-import socket
+from sys import stdout
+
+from twisted.internet import reactor
+from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.endpoints import TCP4ClientEndpoint
+
+
+class HeyProtocol(Protocol):
+    def sendMessage(self, message):
+        self.transport.write(message)
+        stdout.write("Sent:     {}\n".format(message))
+
+    def dataReceived(self, data):
+        stdout.write("Received: {}\n".format(data))
+        self.transport.loseConnection()
+        reactor.stop()
+
+
+class HeyFactory(Factory):
+    def buildProtocol(self, addr):
+        return HeyProtocol()
 
 
 def stopit():
@@ -9,23 +29,17 @@ def whatsup():
     _send_message('whatsup')
 
 
+def _build_message_callback(message):
+    def protocol_callback(p):
+        p.sendMessage(message)
+
+    return protocol_callback
+
+
 def _send_message(message):
     HOST, PORT = "localhost", 9999
 
-    # Create a socket (SOCK_STREAM means a TCP socket)
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    try:
-        # Connect to server and send data
-        sock.connect((HOST, PORT))
-        sock.sendall(message)
-
-        # Receive data from the server and shut down
-        received = sock.recv(1024)
-    finally:
-        sock.close()
-
-    print "Sent:     {}".format(message)
-    print "Received: {}".format(received)
-
-    return received
+    point = TCP4ClientEndpoint(reactor, HOST, PORT)
+    d = point.connect(HeyFactory())
+    d.addCallback(_build_message_callback(message))
+    reactor.run()
